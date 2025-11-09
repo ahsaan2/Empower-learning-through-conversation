@@ -1,53 +1,50 @@
 import React, { useState } from 'react';
 import { addReply } from '../api';
-import { Filter } from 'bad-words';
-
-import { toast } from 'react-toastify';
-
-const filter = new Filter();
 
 export default function ReplyForm({ postId, onReplyAdded }) {
   const [content, setContent] = useState('');
+  const [author, setAuthor] = useState('');
+  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
-
-    if (!content.trim()) {
-      toast.error('Reply content cannot be empty');
+    if (!content.trim() || !author.trim()) {
+      setError('Reply content and author are required');
       return;
     }
-    if (content.trim().length > 500) {
-      toast.error('Reply cannot exceed 500 characters');
-      return;
-    }
-    if (filter.isProfane(content)) {
-      toast.error('Please remove profane words');
-      return;
-    }
-
     setLoading(true);
+    setError(null);
     try {
-      await addReply(postId, content.trim());
-      toast.success('Reply added!');
+      await addReply(postId, content.trim(), author.trim());
       setContent('');
+      setAuthor('');
       onReplyAdded();
     } catch {
-      toast.error('Failed to add reply');
+      setError('Failed to add reply');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mb-4 max-w-xl mx-auto">
+    <form onSubmit={handleSubmit} className="mb-4">
+      {error && <div className="text-red-600 mb-2">{error}</div>}
+      <input
+        type="text"
+        placeholder="Your name"
+        value={author}
+        onChange={e => setAuthor(e.target.value)}
+        disabled={loading}
+        className="w-full p-2 mb-2 border rounded"
+      />
       <textarea
         rows={3}
         placeholder="Write your reply..."
         value={content}
         onChange={e => setContent(e.target.value)}
-        className="w-full p-2 border rounded mb-2"
         disabled={loading}
+        className="w-full p-2 mb-2 border rounded"
       />
       <button
         type="submit"
