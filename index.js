@@ -4,8 +4,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const http = require('http');
-const postsRoutes = require('../routes/Posts');
-
+const postsRoutes = require('./routes/posts');
 const app = express();
 
 const PORT = process.env.PORT || 5000;
