@@ -13,9 +13,9 @@ const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/learnato_
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.log('MongoDB connection error:', err));
+mongoose.connect(mongoUri)
+  .then(() => console.log(' MongoDB connected'))
+  .catch(err => console.log(' MongoDB connection error:', err));
 
 const server = http.createServer(app);
 
