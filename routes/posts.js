@@ -1,4 +1,18 @@
-// Example update for create post endpoint
+const express = require('express');
+const router = express.Router();
+const Post = require('../models/post'); // Ensure casing matches your file name
+
+// Get all posts - sorted by votes and date
+router.get('/', async (req, res) => {
+  try {
+    const posts = await Post.find().sort({ votes: -1, createdAt: -1 });
+    res.json(posts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create a new post
 router.post('/', async (req, res) => {
   const { title, content } = req.body;
   if (!title || !content) return res.status(400).json({ error: 'Title and content are required' });
@@ -8,7 +22,7 @@ router.post('/', async (req, res) => {
     await newPost.save();
 
     const io = req.app.get('io');
-    io.emit('newPost', newPost);  // Emit event to all connected clients
+    io.emit('newPost', newPost);  // Emit real-time event
 
     res.status(201).json(newPost);
   } catch (err) {
@@ -16,7 +30,18 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Similarly emit for adding reply
+// Get single post with replies by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) return res.status(404).json({ error: 'Post not found' });
+    res.json(post);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add reply to a post
 router.post('/:id/reply', async (req, res) => {
   const { content } = req.body;
   if (!content) return res.status(400).json({ error: 'Reply content is required' });
@@ -37,7 +62,7 @@ router.post('/:id/reply', async (req, res) => {
   }
 });
 
-// Emit for upvote
+// Upvote a post
 router.post('/:id/upvote', async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
@@ -54,3 +79,5 @@ router.post('/:id/upvote', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+module.exports = router;
