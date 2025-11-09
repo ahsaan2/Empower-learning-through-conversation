@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:5000/posts';
+// Use environment variable or fallback to localhost
+const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/posts';
 
 export async function fetchPosts(sortBy = 'votes') {
   const response = await axios.get(`${API_BASE}?sortBy=${sortBy}`);
