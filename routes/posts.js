@@ -1,83 +1,85 @@
 const express = require('express');
 const router = express.Router();
-const Post = require('../models/post'); // Ensure casing matches your file name
+const Post = require('../models/Post');
 
-// Get all posts - sorted by votes and date
+// Create new post
+router.post('/', async (req, res) => {
+  const io = req.app.get('io');
+  const { title, content, author } = req.body;
+  if (!title || !content || !author) {
+    return res.status(400).json({ error: 'Title, content, and author are required' });
+  }
+  try {
+    const newPost = new Post({ title, content, author });
+    await newPost.save();
+    io.emit('newPost', newPost);
+    res.status(201).json(newPost);
+  } catch {
+    res.status(500).json({ error: 'Failed to create post' });
+  }
+});
+
+// List all posts
 router.get('/', async (req, res) => {
   try {
     const posts = await Post.find().sort({ votes: -1, createdAt: -1 });
     res.json(posts);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch posts' });
   }
 });
 
-// Create a new post
-router.post('/', async (req, res) => {
-  const { title, content } = req.body;
-  if (!title || !content) return res.status(400).json({ error: 'Title and content are required' });
-
-  try {
-    const newPost = new Post({ title, content });
-    await newPost.save();
-
-    const io = req.app.get('io');
-    io.emit('newPost', newPost);  // Emit real-time event
-
-    res.status(201).json(newPost);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get single post with replies by ID
+// Get single post by ID
 router.get('/:id', async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ error: 'Post not found' });
     res.json(post);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch post' });
   }
 });
 
-// Add reply to a post
+// Add reply
 router.post('/:id/reply', async (req, res) => {
-  const { content } = req.body;
-  if (!content) return res.status(400).json({ error: 'Reply content is required' });
-
+  const io = req.app.get('io');
+  const { content, author } = req.body;
+  if (!content || !author) {
+    return res.status(400).json({ error: 'Reply content and author are required' });
+  }
   try {
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ error: 'Post not found' });
 
-    post.replies.push({ content });
+    post.replies.push({ content, author });
     await post.save();
 
-    const io = req.app.get('io');
-    io.emit('newReply', { postId: post._id, reply: post.replies[post.replies.length - 1] });
-
+    io.emit('newReply', { postId: post.id, reply: post.replies[post.replies.length - 1] });
     res.status(201).json(post);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to add reply' });
   }
 });
 
-// Upvote a post
+// Upvote post
 router.post('/:id/upvote', async (req, res) => {
+  const io = req.app.get('io');
   try {
     const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ error: 'Post not found' });
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
 
-    post.votes += 1;
+    post.votes = (post.votes || 0) + 1;
     await post.save();
 
-    const io = req.app.get('io');
-    io.emit('postUpvoted', { postId: post._id, votes: post.votes });
-
-    res.json({ votes: post.votes });
+    io.emit('postUpvoted', { postId: post.id, votes: post.votes });
+    res.json(post);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Upvote error:', err);
+    res.status(500).json({ error: 'Failed to upvote post' });
   }
 });
+
 
 module.exports = router;
